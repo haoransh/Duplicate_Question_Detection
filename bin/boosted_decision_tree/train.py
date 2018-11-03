@@ -1,4 +1,5 @@
 import argparse
+import json
 import pickle
 from datetime import datetime
 from os import path
@@ -14,8 +15,10 @@ if __name__ == '__main__':
                         default='data/features_dev.csv')
     parser.add_argument('--dev-label-filepath', type=str,
                         default='data/qpairs_dev.csv')
+    parser.add_argument('--param-filepath', type=str,
+                        default='configs/xgb_params.json')
     parser.add_argument('--model-output-dir', type=str, default='output')
-    parser.add_argument('--model-suffix', type=str, default='')
+    parser.add_argument('--model-name-suffix', type=str, default='')
     arg = parser.parse_args()
 
     # read development set
@@ -27,28 +30,20 @@ if __name__ == '__main__':
     dtrain = xgb.DMatrix(train_X_df, label=train_y_df)
     dcv = xgb.DMatrix(cv_X_df, label=cv_y_df)
 
-    # TODO: put params in a JSON file
-    params = {'objective': 'binary:logistic',
-              'eval_metric': ['logloss'],
-              'eta': 0.02,
-              'max_depth': 8,
-              "subsample": 0.7,
-              "min_child_weight": 1,
-              "colsample_bytree": 0.4,
-              "silent": 1,
-              "seed": 10701,
-              'tree_method': 'exact'
-              }
+    # load parameters
+    with open(arg.param_filepath, 'r') as f:
+        params = json.load(f)
 
     bst_tree = xgb.train(params=params,
                          dtrain=dtrain,
                          evals=[(dcv, 'cross-validation')],
                          num_boost_round=2000,
-                         early_stopping_rounds=50,
-                         verbose_eval=10)
+                         verbose_eval=10,
+                         early_stopping_rounds=50)
 
     # serialize boosted trees
     timestamp = datetime.now().strftime('%m-%d-%H%M%S')
-    model_filepath = path.join(arg.model_output_dir, 'xgb_{}_{}.pickle'.format(arg.model_suffix, timestamp))
+    model_filepath = path.join(arg.model_output_dir, 'xgb_{}_{}.pickle'
+                               .format(arg.model_name_suffix, timestamp))
     with open(model_filepath, 'wb') as f:
         pickle.dump(bst_tree, f)
