@@ -1,7 +1,8 @@
 import pandas as pd
-import numpy as np
 
 from nltk.tokenize import word_tokenize
+from textdistance import jaccard, hamming, cosine, lcsseq, lcsstr, \
+    bag, levenshtein
 
 
 def naive_features(question1, question2):
@@ -31,4 +32,19 @@ def naive_features(question1, question2):
         'naive_num_shared_words_case_in': len(common_words),
         'naive_num_shared_chars_case_in': len(common_chars),
         'naive_word_iou_case_in': word_iou
+    })
+
+
+def text_distance_features(question1, question2):
+    """Returns a series of text similarity features, case insensitive."""
+    q1_lower = question1.lower()
+    q2_lower = question2.lower()
+    return pd.Series({
+        'text_sim_jaccard': jaccard(q1_lower, q2_lower),
+        'text_sim_hamming': hamming(q1_lower, q2_lower),
+        'text_sim_Levenshtein': levenshtein(q1_lower, q2_lower),
+        'text_sim_cosine': cosine(q1_lower, q2_lower),
+        #'text_sim_lcsseq': lcsseq(q1_lower, q2_lower), this has a bug
+        #'text_sim_lcsstr': lcsstr(q1_lower, q2_lower),
+        'test_sim_bag': bag(q1_lower, q2_lower)
     })
