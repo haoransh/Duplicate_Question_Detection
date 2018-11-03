@@ -1,0 +1,14 @@
+# IDE
+.idea/
+
+# data files
+data/
+
+# outputs
+output/
+
+# python
+env/
+notebooks/
+*.pyc
+*/__pycache__/*
