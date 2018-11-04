@@ -1,7 +1,7 @@
 import pandas as pd
 
 from nltk.tokenize import word_tokenize
-from textdistance import jaccard, hamming, cosine, lcsseq, lcsstr, \
+from textdistance import jaccard, hamming, cosine, lcsstr, \
     bag, levenshtein
 
 
@@ -36,7 +36,7 @@ def naive_features(question1, question2):
 
 
 def text_distance_features(question1, question2):
-    """Returns a series of text similarity features, case insensitive."""
+    """Returns a series of string distance features, case insensitive."""
     q1_lower = question1.lower()
     q2_lower = question2.lower()
     return pd.Series({
@@ -44,7 +44,6 @@ def text_distance_features(question1, question2):
         'text_sim_hamming': hamming(q1_lower, q2_lower),
         'text_sim_Levenshtein': levenshtein(q1_lower, q2_lower),
         'text_sim_cosine': cosine(q1_lower, q2_lower),
-        #'text_sim_lcsseq': lcsseq(q1_lower, q2_lower), this has a bug
-        #'text_sim_lcsstr': lcsstr(q1_lower, q2_lower),
+        'text_sim_lcsstr_len': len(lcsstr(q1_lower, q2_lower)),
         'test_sim_bag': bag(q1_lower, q2_lower)
     })

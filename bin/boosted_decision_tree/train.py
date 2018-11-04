@@ -24,19 +24,30 @@ if __name__ == '__main__':
     # read development set
     dev_X_df = pd.read_csv(arg.dev_feature_filepath).set_index('id')
     dev_y_df = pd.read_csv(arg.dev_label_filepath, usecols=['id', 'is_duplicate']).set_index('id')
+
+    # split dev set into a training set and a CV set
     train_X_df, cv_X_df, train_y_df, cv_y_df = \
         train_test_split(dev_X_df, dev_y_df, test_size=0.1, random_state=10701)
 
+    # sample from training set to measure training loss
+    train_df_sample = train_X_df.merge(train_y_df,
+                                       left_index=True,
+                                       right_index=True).sample(frac=0.1)
+    train_X_df_sample = train_df_sample.drop('is_duplicate', axis=1)
+    train_y_df_sample = train_df_sample[['is_duplicate']]
+
+    # prepare data for xgboost
     dtrain = xgb.DMatrix(train_X_df, label=train_y_df)
+    dtrain_sample = xgb.DMatrix(train_X_df_sample, label=train_y_df_sample)
     dcv = xgb.DMatrix(cv_X_df, label=cv_y_df)
 
-    # load parameters
+    # load xgboost parameters
     with open(arg.param_filepath, 'r') as f:
         params = json.load(f)
 
     bst_tree = xgb.train(params=params,
                          dtrain=dtrain,
-                         evals=[(dcv, 'cross-validation')],
+                         evals=[(dcv, 'cross-validation'), (dtrain_sample, "train")],
                          num_boost_round=2000,
                          verbose_eval=10,
                          early_stopping_rounds=50)

@@ -1,3 +1,7 @@
+"""
+The script extract features using specified extractors.
+"""
+
 import argparse
 from functools import reduce
 from multiprocessing import cpu_count, Pool
@@ -8,10 +12,12 @@ import numpy as np
 
 from handcrafted_features.naive import naive_features, text_distance_features
 
+# feature extractors, change this to extract different features
+extractors = [naive_features, text_distance_features]
+
 
 def _extract_features_one_split(df_split):
     """Extracts features for one dataframe split."""
-    extractors = [naive_features, text_distance_features]
     feature_sets = [df_split.apply(lambda r: e(r['question1'], r['question2']), axis=1)
                     for e in extractors]
     return reduce(lambda s1, s2: s2.merge(s1, left_index=True, right_index=True), feature_sets)
