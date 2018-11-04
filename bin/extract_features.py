@@ -28,6 +28,7 @@ if __name__ == '__main__':
     parser.add_argument('--input-filepath', type=str,
                         default='data/qpairs_dev.csv')
     parser.add_argument('--output-dir', type=str, default='data')
+    parser.add_argument('--output-filename-suffix', type=str, default='features')
     arg = parser.parse_args()
 
     # empty string should be read as "" instead of na
@@ -44,6 +45,6 @@ if __name__ == '__main__':
 
     # saves features in a csv
     input_filename = path.basename(arg.input_filepath).split('.')[0]
-    output_filename = '{}_naive_features.csv'.format(input_filename)
+    output_filename = '{}_{}.csv'.format(input_filename, arg.output_filename_suffix)
     naive_features_df.to_csv(path.join(arg.output_dir, output_filename),
                              index_label='id')
