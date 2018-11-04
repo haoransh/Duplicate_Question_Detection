@@ -12,6 +12,6 @@ configs/
 
 # python
 env/
-notebooks/
+notebooks/.ipynb_checkpoints
 *.pyc
 */__pycache__/*
