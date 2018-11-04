@@ -12,7 +12,7 @@ import numpy as np
 
 from handcrafted_features.naive import naive_features, text_distance_features
 
-# feature extractors, change this to extract different features
+# feature extractors, change this to extract different sets of features
 extractors = [naive_features, text_distance_features]
 
 

@@ -10,7 +10,7 @@ python3 -m virtualenv env
 source env/bin/activate
 pip install -r requirements.txt
 ```
-Setup `PYTHONPATH` so that `python` is aware of modules in the working directory.
+Setup `PYTHONPATH` so that `python` is aware of the modules in the working directory.
 ```
 export PYTHONPATH=.
 ```
