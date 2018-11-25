@@ -1,4 +1,6 @@
 import re
+from datetime import datetime
+from os import path
 
 import pandas as pd
 from nltk import word_tokenize
@@ -9,15 +11,20 @@ import tensorflow as tf
 class QuestionPairsGenerator:
     def __init__(self, input_filepath, vocab_filepath, fixed_question_len):
         self.question_len = fixed_question_len
-        self._qpairs_df = \
-            pd.read_csv(input_filepath,
-                        keep_default_na=False,
-                        memory_map=True,
-                        dtype={'question1': str, 'question2': str}) \
-                .set_index('id')
-        vocab_df = pd.read_csv(vocab_filepath).set_index('word')
-        # word => index
-        self.inverted_vocab = vocab_df['index']
+
+        # load question pairs
+        self._qpairs_df = pd.read_csv(
+            input_filepath,
+            keep_default_na=False,
+            memory_map=True,
+            dtype={'question1': str, 'question2': str}) \
+            .set_index('id')
+
+        # load inverted vocab index
+        vocab_df = pd.read_csv(vocab_filepath, sep='\t').set_index('word')
+        self.inverted_vocab = vocab_df['index']  # word => index
+
+        # save vocab
         self._vocab = set(vocab_df.index.values)
 
     def __call__(self):
@@ -36,8 +43,7 @@ class QuestionPairsGenerator:
         return word_tokenize(no_formula)
 
     def _encode(self, tokens):
-        return [self.inverted_vocab[t]
-                if t in self._vocab else self.inverted_vocab['<OOV>']
+        return [self.inverted_vocab[t] if t in self._vocab else self.inverted_vocab['<OOV>']
                 for t in tokens]
 
     @property
@@ -45,23 +51,32 @@ class QuestionPairsGenerator:
         return len(self._vocab)
 
 
-class QuestionPairsDatasetInputFunc:
-    def __init__(self, batch_size, shuffle_buffer_size, *args, **kwargs):
-        self.batch_size = batch_size
-        self.shuffle_buffer_size = shuffle_buffer_size
+class QuestionPairsDatasetInputFn:
+    def __init__(self, batch_size, shuffle_buffer_size=-1, epochs=1, cache_filename=None, *args, **kwargs):
+        self._batch_size = batch_size
+        self._shuffle_buffer_size = shuffle_buffer_size
+        self._epochs = epochs
+        self._cache_filename = cache_filename \
+            if cache_filename is not None \
+            else path.join('tmp', datetime.now().strftime('%m%d%H%M%S'))
 
         # instantiate a generator
         self.gen = QuestionPairsGenerator(*args, **kwargs)
 
+        # wrap the generator with tensorflow Dataset
         self._ds = tf.data.Dataset.from_generator(
             self.gen, ((tf.int32, tf.int32), tf.int32), (
                 (tf.TensorShape([self.gen.question_len]),
                  tf.TensorShape([self.gen.question_len])),
-                 tf.TensorShape([])))
+                 tf.TensorShape([])))\
+            .cache(filename=self._cache_filename)
+
+        if (self._shuffle_buffer_size > 0):
+            self._ds = self._ds.shuffle(self._shuffle_buffer_size)
+
+        self._ds = self._ds.repeat(self._epochs) \
+            .batch(self._batch_size)
 
     def __call__(self):
-        iter = self._ds.shuffle(self.shuffle_buffer_size)\
-            .repeat()\
-            .batch(self.batch_size)\
-            .make_one_shot_iterator()
-        return iter.get_next()
+        # make an iterator
+        return self._ds.make_one_shot_iterator().get_next()
