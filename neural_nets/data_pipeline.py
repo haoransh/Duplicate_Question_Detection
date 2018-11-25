@@ -7,6 +7,8 @@ from nltk import word_tokenize
 import numpy as np
 import tensorflow as tf
 
+from tqdm import tqdm
+
 
 class QuestionPairsGenerator:
     def __init__(self, input_filepath, vocab_filepath, fixed_question_len):
@@ -20,12 +22,15 @@ class QuestionPairsGenerator:
             dtype={'question1': str, 'question2': str}) \
             .set_index('id')
 
-        # load inverted vocab index
-        vocab_df = pd.read_csv(vocab_filepath, sep='\t').set_index('word')
-        self.inverted_vocab = vocab_df['index']  # word => index
+        # load vocab file
+        vocab_df = pd.read_csv(vocab_filepath, sep='\t', keep_default_na=False)
 
-        # save vocab
-        self._vocab = set(vocab_df.index.values)
+        # build vocab and inverted vocab index
+        print("building vocab index...")
+        self.inverted_vocab = {}
+        for i, word in tqdm(vocab_df[['index', 'word']].values.tolist()):
+            self.inverted_vocab[word] = i
+        self._vocab = set(self.inverted_vocab.keys())
 
     def __call__(self):
         for _, r in self._qpairs_df.iterrows():
