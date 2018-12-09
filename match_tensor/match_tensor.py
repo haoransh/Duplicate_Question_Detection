@@ -55,6 +55,7 @@ class MatchTensorClassifier:
         print(conv2.shape)
 
         dense1 = tf.layers.dense(conv2, 64)
+        dense1 = tf.layers.batch_normalization(dense1)
         dense1 = tf.tanh(dense1)
         dense2 = tf.layers.dense(dense1, 1)
         similarity = tf.squeeze(tf.sigmoid(dense2))
@@ -62,7 +63,13 @@ class MatchTensorClassifier:
         if mode == tf.estimator.ModeKeys.PREDICT:
             return tf.estimator.EstimatorSpec(mode=mode, predictions=similarity)
 
-        loss = tf.losses.log_loss(labels=labels, predictions=similarity)
+        # loss = tf.losses.log_loss(labels=labels, predictions=similarity)
+        # hinge loss
+        hinged_loss = tf.multiply(tf.cast(labels, tf.float32),
+                                  tf.minimum(similarity - 0.6, 0)) \
+                      + tf.multiply(tf.cast((1 - labels), tf.float32),
+                                    tf.maximum(similarity - 0.4, 0))
+        loss = tf.losses.absolute_difference(hinged_loss, tf.zeros_like(hinged_loss))
 
         if mode == tf.estimator.ModeKeys.TRAIN:
             optimizer = tf.train.AdamOptimizer()
