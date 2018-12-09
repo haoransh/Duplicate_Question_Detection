@@ -1,9 +1,6 @@
 # IDE
 .idea/
 
-# data files
-data/
-
 # outputs
 output/
 
