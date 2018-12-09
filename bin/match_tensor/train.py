@@ -3,8 +3,9 @@ from datetime import datetime
 
 import tensorflow as tf
 
-from neural_nets.data_pipeline import QuestionPairsDatasetInputFn
-from neural_nets.fully_connected import FullyConnectedClassifier
+from match_tensor.data_pipeline import QuestionPairsDatasetInputFn
+from match_tensor.fully_connected import FullyConnectedClassifier
+from match_tensor.match_tensor import MatchTensorClassifier
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -14,6 +15,7 @@ if __name__ == '__main__':
     parser.add_argument('--fixed-question-len', type=int, default=32)
 
     parser.add_argument('--train-filepath', type=str, required=True)
+    parser.add_argument('--embed-mat-filepath', type=str, default=None)
     parser.add_argument('--vocab-filepath', type=str, required=True)
     parser.add_argument('--cv-filepath', type=str, default=None)
     parser.add_argument('--checkpoint-dir', type=str, default='output')
@@ -34,10 +36,11 @@ if __name__ == '__main__':
             fixed_question_len=arg.fixed_question_len,
             vocab_filepath=arg.vocab_filepath)
 
-    estimator_fn = FullyConnectedClassifier(
+    estimator_fn = MatchTensorClassifier(
         embedding_size=arg.word_embedding_size,
         vocab_size=dataset_input_fn_train.gen.vocab_size,
-        fixed_question_len=dataset_input_fn_train.gen.question_len)
+        fixed_question_len=dataset_input_fn_train.gen.question_len,
+        embedding_mat_path=arg.embed_mat_filepath)
 
     duplicated_classifier = tf.estimator.Estimator(
         model_fn=estimator_fn, model_dir="{}/{}{}".format(

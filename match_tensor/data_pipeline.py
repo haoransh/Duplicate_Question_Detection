@@ -30,7 +30,9 @@ class QuestionPairsGenerator:
         self.inverted_vocab = {}
         for i, word in tqdm(vocab_df[['index', 'word']].values.tolist()):
             self.inverted_vocab[word] = i
+        print(len(self.inverted_vocab.keys()))
         self._vocab = set(self.inverted_vocab.keys())
+        print("vocab_size=%s" % self.vocab_size)
 
     def __call__(self):
         for _, r in self._qpairs_df.iterrows():
@@ -76,7 +78,7 @@ class QuestionPairsDatasetInputFn:
                  tf.TensorShape([])))\
             .cache(filename=self._cache_filename)
 
-        if (self._shuffle_buffer_size > 0):
+        if self._shuffle_buffer_size > 0:
             self._ds = self._ds.shuffle(self._shuffle_buffer_size)
 
         self._ds = self._ds.repeat(self._epochs) \

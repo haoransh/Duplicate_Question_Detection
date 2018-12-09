@@ -1,17 +1,26 @@
+import numpy as np
 import tensorflow as tf
 
 
 class FullyConnectedClassifier:
-    def __init__(self, fixed_question_len, embedding_size, vocab_size):
+    def __init__(self, fixed_question_len, embedding_size, vocab_size, embedding_mat_path):
         self.fixed_question_len = fixed_question_len
         self.embedding_size = embedding_size
         self.vocab_size = vocab_size
+        self.embed_mat = np.load(embedding_mat_path)
+        print(self.embed_mat.shape)
+        print(self.vocab_size)
 
     def __call__(self, features, labels, mode):
         q1, q2 = features
 
         # embed words
-        embedding_mat = tf.get_variable('word_embeddings', shape=[self.vocab_size, self.embedding_size])
+        embedding_mat = tf.get_variable(
+            'word_embeddings',
+            shape=[self.vocab_size, self.embedding_size],
+            initializer=tf.constant_initializer(self.embed_mat),
+            trainable=False)
+
         q1_embedded_words = tf.nn.embedding_lookup(embedding_mat, q1)
         q2_embedded_words = tf.nn.embedding_lookup(embedding_mat, q2)
 
@@ -21,12 +30,18 @@ class FullyConnectedClassifier:
 
         # similarity
         with tf.name_scope('similarity'):
-            similarity = tf.nn.sigmoid(tf.reduce_sum(tf.multiply(q1_embedding, q2_embedding), axis=1))
+            concat = tf.concat([q1_embedding, q2_embedding], axis=1)
+            print(concat.shape)
+            similarity = tf.squeeze(tf.sigmoid(tf.layers.dense(concat, units=1)))
 
         if mode == tf.estimator.ModeKeys.PREDICT:
             return tf.estimator.EstimatorSpec(mode=mode, predictions=similarity)
 
-        loss = tf.losses.log_loss(labels=labels, predictions=similarity)
+        hinged_loss = tf.multiply(tf.cast(labels, tf.float32), tf.minimum(similarity - 0.6, 0)) \
+                      + tf.multiply(tf.cast((1 - labels), tf.float32), tf.maximum(similarity - 0.4, 0))
+        loss = tf.losses.absolute_difference(tf.abs(hinged_loss), tf.zeros_like(hinged_loss))
+        # loss = tf.losses.log_loss(labels=labels, predictions=similarity)
+        # loss = tf.losses.get_total_loss()
 
         if mode == tf.estimator.ModeKeys.TRAIN:
             optimizer = tf.train.AdamOptimizer()
