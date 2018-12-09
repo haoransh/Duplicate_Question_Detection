@@ -123,7 +123,7 @@ def main(_):
         vocab_file=os.path.join(bert_pretrain_dir, 'vocab.txt'),
         do_lower_case=FLAGS.do_lower_case)
 
-    logging.info('preparing dataset...')
+    logger.info('preparing dataset...')
     train_dataset = data_utils.get_dataset(
         processor, tokenizer, config_data.data_dir, config_data.max_seq_length,
         config_data.train_batch_size, mode='train', output_dir=FLAGS.output_dir)
@@ -144,7 +144,7 @@ def main(_):
     input_length = tf.reduce_sum(1 - tf.to_int32(tf.equal(input_ids, 0)),
                                  axis=1)
 
-    logging.info('building the model...')
+    logger.info('building the model...')
     # Builds BERT
     with tf.variable_scope('bert'):
         embedder = tx.modules.WordEmbedder(
@@ -200,7 +200,7 @@ def main(_):
                             num_warmup_steps, static_lr)
 
     tf.summary.scalar('lr', lr)
-    logging.info('train steps: %s' % (num_train_steps))
+    logger.info('train steps: %s' % (num_train_steps))
     train_op = tx.core.get_train_op(
         loss,
         global_step=global_step,
@@ -233,15 +233,15 @@ def main(_):
                     rets = sess.run(fetches, feed_dict)
                     writer.add_summary(rets['mgd'], rets['step'])
                     if rets['step'] % 50 == 0:
-                        logging.info(
+                        logger.info(
                             'step:%d loss:%f' % (rets['step'], rets['loss']))
                     if rets['step'] == num_train_steps:
                         break
                     if rets['step'] % 500 == 0:
                         iterator.restart_dataset(sess, 'eval')
-                        # _dev_accu = _run(sess, mode='eval')
+                        _dev_accu = _run(sess, mode='eval')
                         if _dev_accu > eval_accu:
-                            logging.info('saving model...')
+                            logger.info('saving model...')
                             saver.save(sess, FLAGS.output_dir + '/model.ckpt')
                             eval_accu = _dev_accu
                             _run(sess, mode='test')
@@ -266,7 +266,7 @@ def main(_):
                 except tf.errors.OutOfRangeError:
                     break
             dev_accu = cum_acc / nsamples
-            logging.info('dev accu: {}'.format(cum_acc / nsamples))
+            logger.info('dev accu: {}'.format(cum_acc / nsamples))
             return dev_accu
 
         if mode == 'test':
@@ -297,10 +297,10 @@ def main(_):
             pred_df.to_csv(output_file, index_label='id')
 
             test_accu = cum_acc / nsamples
-            logging.info('test accu: {}'.format(cum_acc / nsamples))
+            logger.info('test accu: {}'.format(cum_acc / nsamples))
             return test_accu
 
-    logging.info('running...')
+    logger.info('running...')
 
     with tf.Session() as sess:
         # Loads pretrained BERT model parameters
@@ -323,10 +323,6 @@ def main(_):
         if FLAGS.do_train:
             iterator.restart_dataset(sess, 'train')
             _run(sess, 'train', train_writer, saver)
-
-        if FLAGS.do_eval:
-            iterator.restart_dataset(sess, 'eval')
-            _run(sess, 'eval')
 
         if FLAGS.do_test:
             iterator.restart_dataset(sess, 'test')
