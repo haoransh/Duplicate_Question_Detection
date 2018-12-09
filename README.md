@@ -1,19 +1,12 @@
 # Quora Duplicated Question Pair Detection
-## Dev Environment Setup
-`cd` into the working directory.
+
+## Prerequisites
+
+We recommend you to use python3.
 ```
-cd Duplicate_Question_Detection
-```
-Setup `virtualenv`.
-```
-python3 -m virtualenv env
-source env/bin/activate
 pip install -r requirements.txt
 ```
-Setup `PYTHONPATH` so that `python` is aware of the modules in the working directory.
-```
-export PYTHONPATH=.
-```
+
 ## Evaluation
 ```
 python3 bin/eval.py -h
@@ -30,4 +23,17 @@ python3 bin/boosted_decision_tree/train.py -h
 Prediction.
 ```
 python3 bin/boosted_decision_tree/predict.py -h
+```
+
+
+
+## BERT pretrained models
+
+Since I have implemented the model with Texar, and it has been merged into the main repository, it becomes very easy to run the experiments.
+
+```
+cd src/texar/examples/bert
+sh bert_pretrained_models/download_model.sh
+python bert_classifier_main.py --do_train --do_eval
+python bert_classifier_main.py --do_test
 ```
