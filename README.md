@@ -32,7 +32,9 @@ python3 bin/boosted_decision_tree/predict.py -h
 Since I have implemented the model with Texar, and it has been merged into the main repository, it becomes very easy to run the experiments.
 
 ```
-cd src/texar/examples/bert
+cd src/texar
+pip install -e .
+cd examples/bert
 sh bert_pretrained_models/download_model.sh
 python bert_classifier_main.py --do_train --do_eval
 python bert_classifier_main.py --do_test
