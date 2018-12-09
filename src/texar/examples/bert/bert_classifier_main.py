@@ -24,6 +24,7 @@ import importlib
 import tensorflow as tf
 import texar as tx
 import pandas as pd
+import logging
 
 from utils import data_utils, model_utils, tokenization
 
@@ -67,12 +68,30 @@ flags.DEFINE_bool("do_test", False, "Whether to run test on the test set.")
 config_data = importlib.import_module(FLAGS.config_data)
 config_downstream = importlib.import_module(FLAGS.config_downstream)
 
+def get_logger(log_path):
+    """Returns a logger.
+
+    Args:
+        log_path (str): Path to the log file.
+    """
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(log_path)
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(
+        logging.Formatter('%(asctime)s:%(levelname)s:%(message)s'))
+    logger.addHandler(fh)
+    return logger
+
 def main(_):
     """
     Builds the model and runs.
     """
-    tf.logging.set_verbosity(tf.logging.INFO)
     tx.utils.maybe_create_dir(FLAGS.output_dir)
+    logging_file = os.path.join(FLAGS.output_dir, 'logging.txt')
+    logger = get_logger(logging_file)
+    print('logging file is saved in: %s', logging_file)
+
     bert_pretrain_dir = 'bert_pretrained_models/%s' % FLAGS.config_bert_pretrain
 
     # Loads BERT model configuration
@@ -104,7 +123,7 @@ def main(_):
         vocab_file=os.path.join(bert_pretrain_dir, 'vocab.txt'),
         do_lower_case=FLAGS.do_lower_case)
 
-    tf.logging.info('preparing dataset...')
+    logging.info('preparing dataset...')
     train_dataset = data_utils.get_dataset(
         processor, tokenizer, config_data.data_dir, config_data.max_seq_length,
         config_data.train_batch_size, mode='train', output_dir=FLAGS.output_dir)
@@ -125,7 +144,7 @@ def main(_):
     input_length = tf.reduce_sum(1 - tf.to_int32(tf.equal(input_ids, 0)),
                                  axis=1)
 
-    tf.logging.info('building the model...')
+    logging.info('building the model...')
     # Builds BERT
     with tf.variable_scope('bert'):
         embedder = tx.modules.WordEmbedder(
@@ -181,7 +200,7 @@ def main(_):
                             num_warmup_steps, static_lr)
 
     tf.summary.scalar('lr', lr)
-    tf.logging.info('train steps: %s' % (num_train_steps))
+    logging.info('train steps: %s' % (num_train_steps))
     train_op = tx.core.get_train_op(
         loss,
         global_step=global_step,
@@ -192,8 +211,6 @@ def main(_):
 
     # Train/eval/test routine
 
-    dev_accu = 0
-
     def _run(sess, mode, writer=None, saver=None):
         fetches = {
             'accu': accu,
@@ -201,7 +218,9 @@ def main(_):
             'step': global_step,
             'loss': loss,
         }
-        global dev_accu
+
+        eval_accu = 0
+
         if mode == 'train':
             fetches['train_op'] = train_op
             fetches['mgd'] = merged
@@ -214,17 +233,20 @@ def main(_):
                     rets = sess.run(fetches, feed_dict)
                     writer.add_summary(rets['mgd'], rets['step'])
                     if rets['step'] % 50 == 0:
-                        tf.logging.info(
+                        logging.info(
                             'step:%d loss:%f' % (rets['step'], rets['loss']))
                     if rets['step'] == num_train_steps:
                         break
                     if rets['step'] % 500 == 0:
                         iterator.restart_dataset(sess, 'eval')
-                        _dev_accu = _run(sess, mode='eval')
-                        if _dev_accu > dev_accu:
-                            tf.logging.info('saving model...')
+                        # _dev_accu = _run(sess, mode='eval')
+                        if _dev_accu > eval_accu:
+                            logging.info('saving model...')
                             saver.save(sess, FLAGS.output_dir + '/model.ckpt')
+                            eval_accu = _dev_accu
                             _run(sess, mode='test')
+                        else:
+                            exit()
                 except tf.errors.OutOfRangeError:
                     break
 
@@ -244,7 +266,7 @@ def main(_):
                 except tf.errors.OutOfRangeError:
                     break
             dev_accu = cum_acc / nsamples
-            tf.logging.info('dev accu: {}'.format(cum_acc / nsamples))
+            logging.info('dev accu: {}'.format(cum_acc / nsamples))
             return dev_accu
 
         if mode == 'test':
@@ -262,7 +284,6 @@ def main(_):
                     }
                     rets = sess.run(fetches, feed_dict)
                     _all_probs.extend(rets['prob'].tolist())
-                    print(rets['pair_ids'])
                     _all_ids.extend(rets['pair_ids'].tolist())
                     cum_acc += rets['accu'] * rets['batch_size']
                     nsamples += rets['batch_size']
@@ -276,10 +297,10 @@ def main(_):
             pred_df.to_csv(output_file, index_label='id')
 
             test_accu = cum_acc / nsamples
-            tf.logging.info('test accu: {}'.format(cum_acc / nsamples))
+            logging.info('test accu: {}'.format(cum_acc / nsamples))
             return test_accu
 
-    tf.logging.info('running...')
+    logging.info('running...')
 
     with tf.Session() as sess:
         # Loads pretrained BERT model parameters
