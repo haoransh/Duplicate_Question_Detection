@@ -76,7 +76,7 @@ class QuestionPairsDatasetInputFn:
                 (tf.TensorShape([self.gen.question_len]),
                  tf.TensorShape([self.gen.question_len])),
                  tf.TensorShape([])))\
-            .cache(filename=self._cache_filename)
+            .cache()   # filename=self._cache_filename)
 
         if self._shuffle_buffer_size > 0:
             self._ds = self._ds.shuffle(self._shuffle_buffer_size)
