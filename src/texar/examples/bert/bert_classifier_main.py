@@ -23,6 +23,7 @@ import os
 import importlib
 import tensorflow as tf
 import texar as tx
+import pandas as pd
 
 from utils import data_utils, model_utils, tokenization
 
@@ -119,6 +120,7 @@ def main(_):
     batch = iterator.get_next()
     input_ids = batch["input_ids"]
     segment_ids = batch["segment_ids"]
+    pair_ids = batch['pair_ids']
     batch_size = tf.shape(input_ids)[0]
     input_length = tf.reduce_sum(1 - tf.to_int32(tf.equal(input_ids, 0)),
                                  axis=1)
@@ -159,6 +161,7 @@ def main(_):
     logits = tf.layers.dense(
         output, num_classes,
         kernel_initializer=tf.truncated_normal_initializer(stddev=0.02))
+    probs = tf.nn.softmax(logits, axis=-1)[:, 1]
     preds = tf.argmax(logits, axis=-1, output_type=tf.int32)
     accu = tx.evals.accuracy(batch['label_ids'], preds)
 
@@ -189,14 +192,16 @@ def main(_):
 
     # Train/eval/test routine
 
-    def _run(sess, mode, writer=None):
+    dev_accu = 0
+
+    def _run(sess, mode, writer=None, saver=None):
         fetches = {
             'accu': accu,
             'batch_size': batch_size,
             'step': global_step,
             'loss': loss,
         }
-
+        global dev_accu
         if mode == 'train':
             fetches['train_op'] = train_op
             fetches['mgd'] = merged
@@ -215,7 +220,11 @@ def main(_):
                         break
                     if rets['step'] % 500 == 0:
                         iterator.restart_dataset(sess, 'eval')
-                        _run(sess, mode='eval')
+                        _dev_accu = _run(sess, mode='eval')
+                        if _dev_accu > dev_accu:
+                            tf.logging.info('saving model...')
+                            saver.save(sess, FLAGS.output_dir + '/model.ckpt')
+                            _run(sess, mode='test')
                 except tf.errors.OutOfRangeError:
                     break
 
@@ -234,25 +243,42 @@ def main(_):
                     nsamples += rets['batch_size']
                 except tf.errors.OutOfRangeError:
                     break
-
+            dev_accu = cum_acc / nsamples
             tf.logging.info('dev accu: {}'.format(cum_acc / nsamples))
+            return dev_accu
 
         if mode == 'test':
-            _all_preds = []
+            _all_probs = []
+            _all_ids = []
+            cum_acc = 0.0
+            nsamples = 0
+            fetches['prob'] = probs
+            fetches['pair_ids'] = pair_ids
             while True:
                 try:
                     feed_dict = {
                         iterator.handle: iterator.get_handle(sess, 'test'),
                         tx.context.global_mode(): tf.estimator.ModeKeys.PREDICT,
                     }
-                    _preds = sess.run(preds, feed_dict=feed_dict)
-                    _all_preds.extend(_preds.tolist())
+                    rets = sess.run(fetches, feed_dict)
+                    _all_probs.extend(rets['prob'].tolist())
+                    print(rets['pair_ids'])
+                    _all_ids.extend(rets['pair_ids'].tolist())
+                    cum_acc += rets['accu'] * rets['batch_size']
+                    nsamples += rets['batch_size']
                 except tf.errors.OutOfRangeError:
                     break
 
             output_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
-            with tf.gfile.GFile(output_file, "w") as writer:
-                writer.write('\n'.join(str(p) for p in _all_preds))
+            pred_df = pd.DataFrame.from_dict(
+                {'id': [tf.compat.as_str_any(_id) for _id in _all_ids],
+                 'is_duplicate': _all_probs}).set_index('id')
+            pred_df.to_csv(output_file, index_label='id')
+
+            test_accu = cum_acc / nsamples
+            tf.logging.info('test accu: {}'.format(cum_acc / nsamples))
+            return test_accu
+
     tf.logging.info('running...')
 
     with tf.Session() as sess:
@@ -275,16 +301,15 @@ def main(_):
 
         if FLAGS.do_train:
             iterator.restart_dataset(sess, 'train')
-            _run(sess, mode='train', train_writer)
-            saver.save(sess, FLAGS.output_dir + '/model.ckpt')
+            _run(sess, 'train', train_writer, saver)
 
         if FLAGS.do_eval:
             iterator.restart_dataset(sess, 'eval')
-            _run(sess, mode='eval')
+            _run(sess, 'eval')
 
         if FLAGS.do_test:
             iterator.restart_dataset(sess, 'test')
-            _run(sess, mode='test')
+            _run(sess, 'test')
 
 if __name__ == "__main__":
     tf.app.run()

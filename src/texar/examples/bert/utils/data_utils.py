@@ -49,12 +49,12 @@ class InputExample():
 class InputFeatures():
     """A single set of features of data."""
 
-    def __init__(self, input_ids, input_mask, segment_ids, label_id):
+    def __init__(self, input_ids, input_mask, segment_ids, label_id, guid=None):
         self.input_ids = input_ids
         self.input_mask = input_mask
         self.segment_ids = segment_ids
         self.label_id = label_id
-
+        self.guid = guid
 
 class DataProcessor(object):
     """Base class for data converters for sequence classification data sets."""
@@ -119,11 +119,9 @@ class QuoraProcessor(DataProcessor):
         """Creates examples for the training and dev sets."""
         examples = []
         for (i, line) in enumerate(pd_data.values):
-            if i == 0:
-                continue
-            guid = "%s-%s" % (set_type, i)
             assert len(line) == 6, line
             try:
+                guid = tokenization.convert_to_unicode(str(line[0]))
                 text_a = tokenization.convert_to_unicode(line[3])
                 # Single sentence classification, text_b doesn't exist
                 text_b = tokenization.convert_to_unicode(line[4])
@@ -447,10 +445,12 @@ def convert_single_example(ex_index, example, label_list, max_seq_length,
             " ".join([str(x) for x in segment_ids]))
         tf.logging.info("label: %s (id = %d)" % (example.label, label_id))
 
+    guid = example.guid
     feature = InputFeatures(input_ids=input_ids,
                             input_mask=input_mask,
                             segment_ids=segment_ids,
-                            label_id=label_id)
+                            label_id=label_id,
+                            guid=guid)
     return feature
 
 
@@ -469,12 +469,16 @@ def file_based_convert_examples_to_features(
             return tf.train.Feature(
                 int64_list=tf.train.Int64List(value=list(values)))
 
+        def create_str_feature(values):
+            return tf.train.Feature(
+                bytes_list=tf.train.BytesList(value=list(values)))
+
         features = collections.OrderedDict()
         features["input_ids"] = create_int_feature(feature.input_ids)
         features["input_mask"] = create_int_feature(feature.input_mask)
         features["segment_ids"] = create_int_feature(feature.segment_ids)
         features["label_ids"] = create_int_feature([feature.label_id])
-
+        features["pair_ids"] = create_str_feature([tf.compat.as_bytes(feature.guid)])
         tf_example = tf.train.Example(
             features=tf.train.Features(feature=features))
         writer.write(tf_example.SerializeToString())
@@ -488,6 +492,7 @@ def file_based_input_fn_builder(input_file, seq_length, is_training,
         "input_mask": tf.FixedLenFeature([seq_length], tf.int64),
         "segment_ids": tf.FixedLenFeature([seq_length], tf.int64),
         "label_ids": tf.FixedLenFeature([], tf.int64),
+        "pair_ids": tf.FixedLenFeature([], tf.string)
     }
 
     def _decode_record(record, name_to_features):
