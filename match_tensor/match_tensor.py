@@ -69,7 +69,7 @@ class MatchTensorClassifier:
                                   tf.minimum(similarity - 0.6, 0)) \
                       + tf.multiply(tf.cast((1 - labels), tf.float32),
                                     tf.maximum(similarity - 0.4, 0))
-        loss = tf.losses.absolute_difference(hinged_loss, tf.zeros_like(hinged_loss))
+        loss = tf.losses.absolute_difference(tf.zeros_like(hinged_loss), hinged_loss)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
             optimizer = tf.train.AdamOptimizer()
