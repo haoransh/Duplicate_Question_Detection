@@ -1,17 +1,12 @@
 # IDE
 .idea/
 
-# data files
-data/
-
-# outputs
-output/
-
 # configuration files
 configs/
 
 # python
 env/
+
 notebooks/.ipynb_checkpoints
 *.pyc
 */__pycache__/*
