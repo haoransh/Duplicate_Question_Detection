@@ -40,6 +40,7 @@ class MatchTensorClassifier:
             print(q2.shape)
             match_tensor = tf.matmul(q1, q2)
             match_tensor = tf.transpose(match_tensor, perm=[0, 2, 3, 1])
+            tf.summary.image(tf.reduce_mean(match_tensor, axis=3, keep_dims=True))
             print(match_tensor.shape)
 
         # cnn layers
