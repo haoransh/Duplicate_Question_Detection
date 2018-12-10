@@ -66,9 +66,9 @@ class MatchTensorClassifier:
         # loss = tf.losses.log_loss(labels=labels, predictions=similarity)
         # hinge loss
         hinged_loss = tf.multiply(tf.cast(labels, tf.float32),
-                                  tf.minimum(similarity - 0.6, 0)) \
+                                  tf.minimum(similarity - 0.8, 0)) \
                       + tf.multiply(tf.cast((1 - labels), tf.float32),
-                                    tf.maximum(similarity - 0.4, 0))
+                                    tf.maximum(similarity - 0.2, 0))
         loss = tf.losses.absolute_difference(tf.zeros_like(hinged_loss), hinged_loss)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
