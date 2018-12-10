@@ -1,7 +1,7 @@
 import argparse
+from os import path
+
 import pandas as pd
-from datetime import datetime
-import numpy as np
 
 import tensorflow as tf
 
@@ -18,6 +18,8 @@ if __name__ == '__main__':
     parser.add_argument('--embed-mat-filepath', type=str, default=None)
     parser.add_argument('--vocab-filepath', type=str, required=True)
     parser.add_argument('--model-dir', type=str, default="")
+
+    parser.add_argument('--output-filename', type=str, default='match_tensor_predictions.csv')
     arg = parser.parse_args()
 
     dataset_input_fn = QuestionPairsDatasetInputFn(
@@ -40,4 +42,4 @@ if __name__ == '__main__':
     ids = pd.read_csv(arg.input_filepath, usecols=['id'])['id'].tolist()
 
     pred_df = pd.DataFrame.from_dict({"is_duplicate": pred, "id": ids})
-    pred_df.to_csv('data/match_tensor_prediction.csv', index=None)
+    pred_df.to_csv(path.join('features', arg.output_filename), index=None)
