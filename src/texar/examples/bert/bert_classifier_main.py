@@ -244,9 +244,8 @@ def main(_):
                             logger.info('saving model...')
                             saver.save(sess, FLAGS.output_dir + '/model.ckpt')
                             eval_accu = _dev_accu
+                            iterator.restart_dataset(sess, 'test')
                             _run(sess, mode='test')
-                        else:
-                            exit()
                 except tf.errors.OutOfRangeError:
                     break
 
@@ -314,6 +313,7 @@ def main(_):
         # Restores trained model if specified
         saver = tf.train.Saver()
         if FLAGS.checkpoint:
+            logger.info('load saved checkpoint...')
             saver.restore(sess, FLAGS.checkpoint)
         train_writer = tf.summary.FileWriter(FLAGS.output_dir + '/train',
                                              sess.graph)
@@ -325,6 +325,7 @@ def main(_):
             _run(sess, 'train', train_writer, saver)
 
         if FLAGS.do_test:
+            logger.info('testing...')
             iterator.restart_dataset(sess, 'test')
             _run(sess, 'test')
 

@@ -248,6 +248,4 @@ simple-examples.tgz
 /examples/vae_text/data/
 /examples/transformer/data/
 /examples/transformer/temp/
-/examples/transformer/outputs/
 /examples/bert/data/
-/examples/bert/output
