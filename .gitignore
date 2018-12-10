@@ -1,9 +1,6 @@
 # IDE
 .idea/
 
-# outputs
-output/
-
 # configuration files
 configs/
 
