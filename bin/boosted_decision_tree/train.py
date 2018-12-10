@@ -9,6 +9,7 @@ import pandas as pd
 import xgboost as xgb
 from sklearn.model_selection import train_test_split
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dev-feature-filepath', type=str,
@@ -24,6 +25,11 @@ if __name__ == '__main__':
     # read development set
     dev_X_df = pd.read_csv(arg.dev_feature_filepath).set_index('id')
     dev_y_df = pd.read_csv(arg.dev_label_filepath, usecols=['id', 'is_duplicate']).set_index('id')
+
+    # join to make sure the order is correct
+    joined = dev_y_df.merge(dev_X_df, left_index=True, right_index=True)
+    dev_X_df = joined.drop(['is_duplicate'], axis=1)
+    dev_y_df = joined[['is_duplicate']]
 
     # split dev set into a training set and a CV set
     train_X_df, cv_X_df, train_y_df, cv_y_df = \
