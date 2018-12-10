@@ -35,6 +35,9 @@ flags = tf.flags
 FLAGS = flags.FLAGS
 flags.DEFINE_string("config_model", "config_model", "The model config.")
 flags.DEFINE_string(
+    "config_bert_pretrain", 'uncased_L-12_H-768_A-12',
+    "The architecture of pre-trained BERT model to use.")
+flags.DEFINE_string(
     "task", "quora",
     "The task to run experiment on. One of "
     "{'cola', 'mnli', 'mrpc', 'xnli', 'sst', 'quora'}.")
@@ -44,7 +47,7 @@ flags.DEFINE_string(
     "the same format of the official BERT config file. Set to 'texar' if the "
     "BERT config file is in Texar format.")
 flags.DEFINE_string(
-    "config_data", "config_data_quora",
+    "config_data", "config_data_quora_shallow",
     "The dataset config.")
 flags.DEFINE_string(
     "checkpoint", None,
@@ -87,6 +90,8 @@ def main(_):
     logger = get_logger(logging_file)
     print('logging file is saved in: %s', logging_file)
 
+    bert_pretrain_dir = 'bert_pretrained_models/%s' % FLAGS.config_bert_pretrain
+
     # Loads data
     processors = {
         "cola": data_utils.ColaProcessor,
@@ -106,7 +111,7 @@ def main(_):
         vocab_file=os.path.join(bert_pretrain_dir, 'vocab.txt'),
         do_lower_case=FLAGS.do_lower_case)
 
-    logging.info('preparing dataset...')
+    logger.info('preparing dataset...')
     train_dataset = data_utils.get_dataset(
         processor, tokenizer, config_data.data_dir, config_data.max_seq_length,
         config_data.train_batch_size, mode='train', output_dir=FLAGS.output_dir)
@@ -127,24 +132,24 @@ def main(_):
     input_length = tf.reduce_sum(1 - tf.to_int32(tf.equal(input_ids, 0)),
                                  axis=1)
 
-    logging.info('building the model...')
+    logger.info('building the model...')
     # Builds BERT
     with tf.variable_scope('bert'):
         embedder = tx.modules.WordEmbedder(
-            vocab_size=bert_config.vocab_size,
-            hparams=bert_config.embed)
+            vocab_size=config_model.vocab_size,
+            hparams=config_model.embed)
         word_embeds = embedder(input_ids)
 
         # Creates segment embeddings for each type of tokens.
         segment_embedder = tx.modules.WordEmbedder(
-            vocab_size=bert_config.type_vocab_size,
-            hparams=bert_config.segment_embed)
+            vocab_size=config_model.type_vocab_size,
+            hparams=config_model.segment_embed)
         segment_embeds = segment_embedder(segment_ids)
 
         input_embeds = word_embeds + segment_embeds
 
         # The BERT model (a TransformerEncoder)
-        encoder = tx.modules.TransformerEncoder(hparams=bert_config.encoder)
+        encoder = tx.modules.TransformerEncoder(hparams=config_model.encoder)
         output = encoder(input_embeds, input_length)
 
         # Builds layers for downstream classification, which is also initialized
@@ -183,7 +188,7 @@ def main(_):
                             num_warmup_steps, static_lr)
 
     tf.summary.scalar('lr', lr)
-    logging.info('train steps: %s' % (num_train_steps))
+    logger.info('train steps: %s' % (num_train_steps))
     train_op = tx.core.get_train_op(
         loss,
         global_step=global_step,
@@ -216,20 +221,19 @@ def main(_):
                     rets = sess.run(fetches, feed_dict)
                     writer.add_summary(rets['mgd'], rets['step'])
                     if rets['step'] % 50 == 0:
-                        logging.info(
+                        logger.info(
                             'step:%d loss:%f' % (rets['step'], rets['loss']))
                     if rets['step'] == num_train_steps:
                         break
-                    if rets['step'] % 500 == 0:
+                    if rets['step'] % 3000 == 0:
                         iterator.restart_dataset(sess, 'eval')
-                        # _dev_accu = _run(sess, mode='eval')
+                        _dev_accu = _run(sess, mode='eval')
                         if _dev_accu > eval_accu:
-                            logging.info('saving model...')
+                            logger.info('saving model...')
                             saver.save(sess, FLAGS.output_dir + '/model.ckpt')
                             eval_accu = _dev_accu
+                            iterator.restart_dataset(sess, 'test')
                             _run(sess, mode='test')
-                        else:
-                            exit()
                 except tf.errors.OutOfRangeError:
                     break
 
@@ -249,7 +253,7 @@ def main(_):
                 except tf.errors.OutOfRangeError:
                     break
             dev_accu = cum_acc / nsamples
-            logging.info('dev accu: {}'.format(cum_acc / nsamples))
+            logger.info('dev accu: {}'.format(cum_acc / nsamples))
             return dev_accu
 
         if mode == 'test':
@@ -280,16 +284,12 @@ def main(_):
             pred_df.to_csv(output_file, index_label='id')
 
             test_accu = cum_acc / nsamples
-            logging.info('test accu: {}'.format(cum_acc / nsamples))
+            logger.info('test accu: {}'.format(cum_acc / nsamples))
             return test_accu
 
-    logging.info('running...')
+    logger.info('running...')
 
     with tf.Session() as sess:
-        # Loads pretrained BERT model parameters
-        init_checkpoint = os.path.join(bert_pretrain_dir, 'bert_model.ckpt')
-        model_utils.init_bert_checkpoint(init_checkpoint)
-
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
         sess.run(tf.tables_initializer())
