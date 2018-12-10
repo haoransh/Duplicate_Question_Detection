@@ -25,7 +25,7 @@ class MatchTensorClassifier:
         q2_embedded_words = tf.nn.embedding_lookup(embedding_mat, q2)
 
         # embed question
-        recurrent_layer = tf.contrib.keras.layers.GRU(50, return_sequences=True)
+        recurrent_layer = tf.keras.layers.Bidirectional(tf.contrib.keras.layers.GRU(50, return_sequences=True), merge_mode='concat')
         q1_embedding = recurrent_layer(q1_embedded_words)
         q2_embedding = recurrent_layer(q2_embedded_words)
         print(q1_embedding.shape)
@@ -64,13 +64,7 @@ class MatchTensorClassifier:
         if mode == tf.estimator.ModeKeys.PREDICT:
             return tf.estimator.EstimatorSpec(mode=mode, predictions=similarity)
 
-        # loss = tf.losses.log_loss(labels=labels, predictions=similarity)
-        # hinge loss
-        hinged_loss = tf.multiply(tf.cast(labels, tf.float32),
-                                  tf.minimum(similarity - 0.8, 0)) \
-                      + tf.multiply(tf.cast((1 - labels), tf.float32),
-                                    tf.maximum(similarity - 0.2, 0))
-        loss = tf.losses.absolute_difference(tf.zeros_like(hinged_loss), hinged_loss)
+        loss = tf.losses.log_loss(labels=labels, predictions=similarity)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
             optimizer = tf.train.AdamOptimizer()
