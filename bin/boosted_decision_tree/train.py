@@ -53,8 +53,8 @@ if __name__ == '__main__':
 
     bst_tree = xgb.train(params=params,
                          dtrain=dtrain,
-                         evals=[(dcv, 'cross-validation'), (dtrain_sample, "train")],
-                         num_boost_round=2000,
+                         evals=[(dtrain_sample, "train"), (dcv, 'cross-validation')],
+                         num_boost_round=1000,
                          verbose_eval=10,
                          early_stopping_rounds=50)
 
