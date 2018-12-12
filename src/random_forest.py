@@ -42,6 +42,7 @@ def main():
         X_val = X_val.merge(df_bert_dev, on='id')
         X_test = X_test.merge(df_bert_test, on='id')
 
+    test_ids = X_test['id'].values
     X_train = X_train.values
     X_val = X_val.values
     X_test = X_test.values
@@ -76,6 +77,14 @@ def main():
     preds_test[preds_test <= 0.5] = 0
     accuracy = accuracy_score(y_test, preds_test)
     print('Testing accuracy = {}\n'.format(accuracy))
+
+    _dict = {
+        'id': test_ids,
+        'is_duplicate': preds_test
+    }
+    output_file = "random_forest_test_results.csv"
+    pred_df = pd.DataFrame.from_dict(_dict).set_index('id')
+    pred_df.to_csv(output_file, index_label='id')
 
 if __name__ == '__main__':
     main()
