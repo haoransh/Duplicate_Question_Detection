@@ -1,10 +1,9 @@
-import numpy as np
 import tensorflow as tf
 
 from match_tensor.model_base import ModelBase
 
 
-class MatchTensorClassifier(ModelBase):
+class LSTMClassifier(ModelBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

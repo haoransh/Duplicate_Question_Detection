@@ -1,9 +1,11 @@
 import argparse
 from datetime import datetime
 
+import numpy as np
 import tensorflow as tf
 
 from match_tensor.data_pipeline import QuestionPairsDatasetInputFn
+from match_tensor.lstm import LSTMClassifier
 from match_tensor.match_tensor import MatchTensorClassifier
 
 if __name__ == '__main__':
@@ -35,7 +37,7 @@ if __name__ == '__main__':
             fixed_question_len=arg.fixed_question_len,
             vocab_filepath=arg.vocab_filepath)
 
-    estimator_fn = MatchTensorClassifier(
+    estimator_fn = LSTMClassifier(
         embedding_size=arg.word_embedding_size,
         vocab_size=dataset_input_fn_train.gen.vocab_size,
         fixed_question_len=dataset_input_fn_train.gen.question_len,
@@ -45,7 +47,8 @@ if __name__ == '__main__':
         model_fn=estimator_fn, model_dir="{}/{}{}".format(
             arg.checkpoint_dir,
             arg.model_name,
-            datetime.now().strftime('_%m-%d-%H%M%S')))
+            datetime.now().strftime('_%m-%d-%H%M%S')),
+            config=tf.estimator.RunConfig(keep_checkpoint_max=0))
 
     # TODO implement early stop
     while True:  # train forever
