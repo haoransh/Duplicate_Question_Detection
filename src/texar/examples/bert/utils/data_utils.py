@@ -101,10 +101,15 @@ class QuoraProcessor(DataProcessor):
         return self._create_examples(
             self._read_tsv(os.path.join(data_dir, "qpairs_train.csv")), "train")
 
-    def get_dev_examples(self, data_dir):
+    def get_eval_examples(self, data_dir):
         """See base class."""
         return self._create_examples(
             self._read_tsv(os.path.join(data_dir, "qpairs_val.csv")), "val")
+
+    def get_dev_examples(self, data_dir):
+        """See base class."""
+        return self._create_examples(
+            self._read_tsv(os.path.join(data_dir, "qpairs_dev.csv")), "val")
 
     def get_test_examples(self, data_dir):
         """See base class."""
@@ -561,7 +566,7 @@ def get_dataset(processor,
         data_dir: The input data directory.
         max_seq_length: Max sequence length.
         batch_size: mini-batch size.
-        model: `train`, `eval` or `test`.
+        model: `train`, `eval`, `test`, `fulltest`
         output_dir: The directory to save the TFRecords in.
     """
     label_list = processor.get_labels()
@@ -578,7 +583,7 @@ def get_dataset(processor,
             drop_remainder=True,
             is_training=True)({'batch_size': batch_size})
     elif mode == 'eval':
-        eval_examples = processor.get_dev_examples(data_dir)
+        eval_examples = processor.get_eval_examples(data_dir)
         eval_file = os.path.join(output_dir, "eval.tf_record")
         if not os.path.exists(eval_file):
             file_based_convert_examples_to_features(
@@ -598,6 +603,18 @@ def get_dataset(processor,
                 tokenizer, test_file)
         dataset = file_based_input_fn_builder(
             input_file=test_file,
+            seq_length=max_seq_length,
+            is_training=False,
+            drop_remainder=False)({'batch_size': batch_size})
+    elif mode == 'dev':
+        dev_examples = processor.get_dev_examples(data_dir)
+        dev_file = os.path.join(output_dir, "dev.tf_record")
+        if not os.path.exists(dev_file):
+            file_based_convert_examples_to_features(
+                dev_examples, label_list, max_seq_length,
+                tokenizer, dev_file)
+        dataset = file_based_input_fn_builder(
+            input_file=dev_file,
             seq_length=max_seq_length,
             is_training=False,
             drop_remainder=False)({'batch_size': batch_size})
