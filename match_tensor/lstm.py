@@ -10,7 +10,7 @@ class LSTMClassifier(ModelBase):
     def match_model(self, q1_embedded_words, q2_embedded_words):
         # embed question
         recurrent_layer = tf.keras.layers.Bidirectional(
-            tf.contrib.keras.layers.LSTM(128, return_sequences=False),
+            tf.contrib.keras.layers.GRU(128, return_sequences=False),
             merge_mode='concat')
         q1_embedding = recurrent_layer(q1_embedded_words)
         q2_embedding = recurrent_layer(q2_embedded_words)
