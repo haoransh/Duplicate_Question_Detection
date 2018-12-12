@@ -64,6 +64,7 @@ flags.DEFINE_bool(
 flags.DEFINE_bool("do_train", False, "Whether to run training.")
 flags.DEFINE_bool("do_eval", False, "Whether to run eval on the dev set.")
 flags.DEFINE_bool("do_test", False, "Whether to run test on the test set.")
+flags.DEFINE_bool("do_dev", False, "Whether to run test on the test set.")
 
 config_data = importlib.import_module(FLAGS.config_data)
 config_downstream = importlib.import_module(FLAGS.config_downstream)
@@ -133,9 +134,13 @@ def main(_):
     test_dataset = data_utils.get_dataset(
         processor, tokenizer, config_data.data_dir, config_data.max_seq_length,
         config_data.test_batch_size, mode='test', output_dir=FLAGS.output_dir)
+    dev_dataset = data_utils.get_dataset(
+        processor, tokenizer, config_data.data_dir, config_data.max_seq_length,
+        config_data.test_batch_size, mode='dev', output_dir=FLAGS.output_dir)
 
     iterator = tx.data.FeedableDataIterator({
-        'train': train_dataset, 'eval': eval_dataset, 'test': test_dataset})
+        'train': train_dataset, 'eval': eval_dataset,
+        'test': test_dataset, 'dev': dev_dataset})
     batch = iterator.get_next()
     input_ids = batch["input_ids"]
     segment_ids = batch["segment_ids"]
@@ -268,35 +273,46 @@ def main(_):
             logger.info('dev accu: {}'.format(cum_acc / nsamples))
             return dev_accu
 
-        if mode == 'test':
+        if mode == 'test' or mode == 'dev':
             _all_probs = []
             _all_ids = []
+            feature_dim = 768
+            _bert_features = [[] for _ in range(feature_dim)]
             cum_acc = 0.0
             nsamples = 0
             fetches['prob'] = probs
             fetches['pair_ids'] = pair_ids
+            fetches['sent_vector'] = output
             while True:
                 try:
                     feed_dict = {
-                        iterator.handle: iterator.get_handle(sess, 'test'),
+                        iterator.handle: iterator.get_handle(sess, mode),
                         tx.context.global_mode(): tf.estimator.ModeKeys.PREDICT,
                     }
                     rets = sess.run(fetches, feed_dict)
                     _all_probs.extend(rets['prob'].tolist())
                     _all_ids.extend(rets['pair_ids'].tolist())
+                    for _d in range(feature_dim):
+                        _bert_features[_d].extend(rets['sent_vector'][:, _d])
                     cum_acc += rets['accu'] * rets['batch_size']
                     nsamples += rets['batch_size']
                 except tf.errors.OutOfRangeError:
                     break
 
-            output_file = os.path.join(FLAGS.output_dir, "test_results.tsv")
-            pred_df = pd.DataFrame.from_dict(
-                {'id': [tf.compat.as_str_any(_id) for _id in _all_ids],
-                 'is_duplicate': _all_probs}).set_index('id')
+            output_file = os.path.join(FLAGS.output_dir,
+                                       "{}_results.tsv".format(mode))
+            _dict = {
+                'id': [tf.compat.as_str_any(_id) for _id in _all_ids],
+                'bert_is_duplicate': _all_probs,
+            }
+            for _d in range(feature_dim):
+                _dict['bert_{}'.format(_d)] = _bert_features[_d]
+
+            pred_df = pd.DataFrame.from_dict(_dict).set_index('id')
             pred_df.to_csv(output_file, index_label='id')
 
             test_accu = cum_acc / nsamples
-            logger.info('test accu: {}'.format(cum_acc / nsamples))
+            logger.info('{} accu: {}'.format(mode, cum_acc / nsamples))
             return test_accu
 
     logger.info('running...')
@@ -328,6 +344,11 @@ def main(_):
             logger.info('testing...')
             iterator.restart_dataset(sess, 'test')
             _run(sess, 'test')
+
+        if FLAGS.do_dev:
+            logger.info('developing...')
+            iterator.restart_dataset(sess, 'dev')
+            _run(sess, 'dev')
 
 if __name__ == "__main__":
     tf.app.run()
