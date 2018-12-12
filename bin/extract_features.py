@@ -42,10 +42,10 @@ if __name__ == '__main__':
     # parallelized feature extraction
     splits = np.array_split(question_pairs_df, cpu_count())
     with Pool(cpu_count()) as pool:
-        naive_features_df = pd.concat(pool.map(_extract_features_one_split, splits))
+        features_df = pd.concat(pool.map(_extract_features_one_split, splits))
 
     # saves features in a csv
     input_filename = path.basename(arg.input_filepath).split('.')[0]
     output_filename = '{}_{}.csv'.format(input_filename, arg.output_filename_suffix)
-    naive_features_df.to_csv(path.join(arg.output_dir, output_filename),
-                             index_label='id')
+    features_df.to_csv(path.join(arg.output_dir, output_filename),
+                       index_label='id')
