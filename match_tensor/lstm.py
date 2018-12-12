@@ -16,10 +16,10 @@ class LSTMClassifier(ModelBase):
         q2_embedding = recurrent_layer(q2_embedded_words)
         print(q1_embedding.shape)
         concat = tf.concat([q1_embedding, q2_embedding], axis=1)
-        dense1 = tf.layers.dense(64, concat)
+        dense1 = tf.layers.dense(concat, 64)
         dense1 = tf.layers.batch_normalization(dense1)
         dense1 = tf.tanh(dense1)
-        dense2 = tf.layers.dense(1, dense1)
+        dense2 = tf.layers.dense(dense1, 1)
         # dense2 = tf.layers.batch_normalization(dense2)
         similarity = tf.squeeze(tf.sigmoid(dense2))
 
