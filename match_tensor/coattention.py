@@ -39,8 +39,8 @@ class CoattentionClassifier(ModelBase):
         with tf.name_scope('q2_attended'):
             q2_attended = tf.matmul(tf.transpose(q2_attention, perm=[0, 2, 1]), q2_embedding)
 
-        concat = tf.concat([q1_attended, q2_attended], axis=1)
-        
+        concat = tf.concat([q1_attended, q2_attended], axis=2)
+
         recurrent2 = tf.keras.layers.Bidirectional(
             tf.keras.layers.GRU(128, return_sequences=False),
             merge_mode='concat')(concat)
