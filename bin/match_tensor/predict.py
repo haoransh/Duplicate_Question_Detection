@@ -4,6 +4,8 @@ from os import path
 import pandas as pd
 
 import tensorflow as tf
+import numpy as np
+
 
 from match_tensor.data_pipeline import QuestionPairsDatasetInputFn
 from match_tensor.match_tensor import MatchTensorClassifier
@@ -38,8 +40,18 @@ if __name__ == '__main__':
     duplicated_classifier = tf.estimator.Estimator(
         model_fn=estimator_fn, model_dir=arg.model_dir)
 
-    pred = list(duplicated_classifier.predict(input_fn=dataset_input_fn))
-    ids = pd.read_csv(arg.input_filepath, usecols=['id'])['id'].tolist()
+    pred = duplicated_classifier.predict(input_fn=dataset_input_fn)
+    prob = np.zeros(len(pred))
+    activations = np.zeros((len(pred), len(pred[0]['last_layer'])))
+    for i, r in enumerate(pred):
+        prob[i] = r['probability']
+        activations[i] = r['last_layer']
 
-    pred_df = pd.DataFrame.from_dict({"is_duplicate": pred, "id": ids})
-    pred_df.to_csv(path.join('features', arg.output_filename), index=None)
+    feat_df = pd.DataFrame(
+        data=activations,
+        columns=['bi_gru_{}'.format(i) for i in range(0, activations.shape[1])])
+    feat_df['id'] = pd.read_csv(
+        arg.input_filepath, usecols=['id'])['id']
+    feat_df['bi_gru_is_duplicate'] = prob
+
+    feat_df.to_csv(path.join('features', arg.output_filename), index=None)

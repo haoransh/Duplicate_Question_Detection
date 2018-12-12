@@ -28,12 +28,12 @@ class ModelBase:
         q1_embedded_words = tf.nn.embedding_lookup(embedding_mat, q1)
         q2_embedded_words = tf.nn.embedding_lookup(embedding_mat, q2)
 
-        dense1, similarity = self.match_model(
+        last_layer, similarity = self.match_model(
             q1_embedded_words, q2_embedded_words)
 
         if mode == tf.estimator.ModeKeys.PREDICT:
             return tf.estimator.EstimatorSpec(mode=mode, predictions={
-                'last_layer': dense1,
+                'last_layer': last_layer,
                 'probability': similarity
             })
 
