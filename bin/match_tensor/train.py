@@ -4,13 +4,15 @@ from datetime import datetime
 import numpy as np
 import tensorflow as tf
 
+from match_tensor.coattention import CoattentionClassifier
 from match_tensor.data_pipeline import QuestionPairsDatasetInputFn
 from match_tensor.bi_gru_siamese import BiGRUSiameseClassifier
 from match_tensor.match_tensor import MatchTensorClassifier
 
 models = {
     'match_tensor': MatchTensorClassifier,
-    'bi_gru': BiGRUSiameseClassifier
+    'bi_gru': BiGRUSiameseClassifier,
+    'coattention': CoattentionClassifier
 }
 
 if __name__ == '__main__':
