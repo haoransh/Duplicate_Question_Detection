@@ -3,7 +3,7 @@ import tensorflow as tf
 from match_tensor.model_base import ModelBase
 
 
-class LSTMClassifier(ModelBase):
+class BiGRUSiameseClassifier(ModelBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
