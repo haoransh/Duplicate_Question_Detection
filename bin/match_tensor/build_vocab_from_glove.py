@@ -12,7 +12,7 @@ if __name__ == '__main__':
     arg = parser.parse_args()
 
     # build inverted vocab index
-    predefined = pd.DataFrame([{'word': '<PAD>'}, {'word': '<OOV>'}])
+    predefined = pd.DataFrame([{'word': '<PAD>'}, {'word': '<OOV1>'}, {'word': '<OOV2>'}])
 
     glove_df = pd.read_table(
         arg.w2v_filepath,
@@ -34,10 +34,6 @@ if __name__ == '__main__':
         header=['word'])
 
     # build embedding matrix
-    embed_mat = glove_df[list(range(1, 51))].values
-
-    # add word vector for pad and oov
-    pad_oov = np.zeros((2, 50))
-    embed_mat = np.concatenate([pad_oov, embed_mat], axis=0)
+    embed_mat = glove_df[list(range(1, glove_df.shape[1]))].values
     print(embed_mat.shape)
     np.save("{}.embed_mat".format(arg.output_filepath), embed_mat)

@@ -4,7 +4,6 @@ from datetime import datetime
 import tensorflow as tf
 
 from match_tensor.data_pipeline import QuestionPairsDatasetInputFn
-from match_tensor.fully_connected import FullyConnectedClassifier
 from match_tensor.match_tensor import MatchTensorClassifier
 
 if __name__ == '__main__':

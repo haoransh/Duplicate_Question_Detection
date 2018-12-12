@@ -36,12 +36,12 @@ class QuestionPairsGenerator:
 
     def __call__(self):
         for _, r in self._qpairs_df.iterrows():
-            x = (self._process_one_question(r['question1']), self._process_one_question(r['question2']))
+            x = (self._process_one_question(r['question1'], 1), self._process_one_question(r['question2'], 2))
             y = r['is_duplicate']
             yield (x, y)
 
-    def _process_one_question(self, text):
-        encoded = self._encode(self._tokenize(text))[:self.question_len]
+    def _process_one_question(self, text, qid):
+        encoded = self._encode(self._tokenize(text), qid)[:self.question_len]
         return np.pad(encoded, (0, self.question_len - len(encoded)), mode='constant')
 
     def _tokenize(self, text):
@@ -49,9 +49,16 @@ class QuestionPairsGenerator:
         no_formula = re.sub(r'\[math\]((?!\[\/math\]).)*\[\/math\]', '', text.lower())
         return word_tokenize(no_formula)
 
-    def _encode(self, tokens):
-        return [self.inverted_vocab[t] if t in self._vocab else self.inverted_vocab['<OOV>']
-                for t in tokens]
+    def _encode(self, tokens, qid):
+        encoded = []
+        for t in tokens:
+            if t in self._vocab:
+                encoded.append(self.inverted_vocab[t])
+            elif qid == 1:
+                encoded.append(self.inverted_vocab['<OOV1>'])
+            else:
+                encoded.append(self.inverted_vocab['<OOV2>'])
+        return encoded
 
     @property
     def vocab_size(self):

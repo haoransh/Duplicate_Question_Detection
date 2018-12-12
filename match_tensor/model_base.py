@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 
-class FullyConnectedClassifier:
+class ModelBase:
     def __init__(self, fixed_question_len, embedding_size, vocab_size, embedding_mat_path):
         self.fixed_question_len = fixed_question_len
         self.embedding_size = embedding_size
@@ -15,33 +15,29 @@ class FullyConnectedClassifier:
         q1, q2 = features
 
         # embed words
-        embedding_mat = tf.get_variable(
-            'word_embeddings',
-            shape=[self.vocab_size, self.embedding_size],
-            initializer=tf.constant_initializer(self.embed_mat),
-            trainable=False)
+        with tf.variable_scope('token_embeddings'):
+            vocab = tf.get_variable(
+                'vocab_embeddings',
+                shape=[self.vocab_size, self.embedding_size],
+                initializer=tf.constant_initializer(self.embed_mat),
+                trainable=False)
+            pad = tf.zeros((1, self.embedding_size))
+            oov = tf.get_variable('oov', shape=[2, self.embedding_size], trainable=True)
+            embedding_mat = tf.concat([pad, oov, vocab], axis=0)
 
         q1_embedded_words = tf.nn.embedding_lookup(embedding_mat, q1)
         q2_embedded_words = tf.nn.embedding_lookup(embedding_mat, q2)
 
-        # embed question
-        q1_embedding = tf.reduce_mean(q1_embedded_words, axis=1, name='q1_embedding')
-        q2_embedding = tf.reduce_mean(q2_embedded_words, axis=1, name='q2_embedding')
-
-        # similarity
-        with tf.name_scope('similarity'):
-            concat = tf.concat([q1_embedding, q2_embedding], axis=1)
-            print(concat.shape)
-            similarity = tf.squeeze(tf.sigmoid(tf.layers.dense(concat, units=1)))
+        dense1, similarity = self.match_model(
+            q1_embedded_words, q2_embedded_words)
 
         if mode == tf.estimator.ModeKeys.PREDICT:
-            return tf.estimator.EstimatorSpec(mode=mode, predictions=similarity)
+            return tf.estimator.EstimatorSpec(mode=mode, predictions={
+                'last_layer': dense1,
+                'probability': similarity
+            })
 
-        hinged_loss = tf.multiply(tf.cast(labels, tf.float32), tf.minimum(similarity - 0.6, 0)) \
-                      + tf.multiply(tf.cast((1 - labels), tf.float32), tf.maximum(similarity - 0.4, 0))
-        loss = tf.losses.absolute_difference(tf.abs(hinged_loss), tf.zeros_like(hinged_loss))
-        # loss = tf.losses.log_loss(labels=labels, predictions=similarity)
-        # loss = tf.losses.get_total_loss()
+        loss = tf.losses.log_loss(labels=labels, predictions=similarity)
 
         if mode == tf.estimator.ModeKeys.TRAIN:
             optimizer = tf.train.AdamOptimizer()
@@ -57,4 +53,8 @@ class FullyConnectedClassifier:
             'false_negative': tf.metrics.false_negatives(labels=labels, predictions=bin_similarity),
             'false_positive': tf.metrics.false_positives(labels=labels, predictions=bin_similarity)
         }
+
         return tf.estimator.EstimatorSpec(loss=loss, eval_metric_ops=metrics_ops, mode=mode)
+
+    def match_model(self, q1_embedded_words, q2_embedded_words):
+        raise NotImplementedError
