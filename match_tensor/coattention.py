@@ -21,9 +21,9 @@ class CoattentionClassifier(ModelBase):
 
         # scale by row
         with tf.name_scope('norm_by_row'):
-            q1_attention = (affinity_mat - tf.reduce_min(affinity_mat, axis=2)) \
-                           / (tf.reduce_max(affinity_mat, axis=2)
-                              - tf.reduce_min(affinity_mat, axis=2)
+            q1_attention = (affinity_mat - tf.reduce_min(affinity_mat, axis=2, keepdims=True)) \
+                           / (tf.reduce_max(affinity_mat, axis=2, keepdims=True)
+                              - tf.reduce_min(affinity_mat, axis=2, keepdims=True)
                               + tf.keras.backend.epsilon())
 
         with tf.name_scope('q1_attended'):
@@ -31,9 +31,9 @@ class CoattentionClassifier(ModelBase):
 
         # scale by column
         with tf.name_scope('norm_by_col'):
-            q2_attention = (affinity_mat - tf.reduce_min(affinity_mat, axis=1)
-                            / (tf.reduce_max(affinity_mat, axis=1)
-                               - tf.reduce_min(affinity_mat, axis=1)
+            q2_attention = (affinity_mat - tf.reduce_min(affinity_mat, axis=1, keepdims=True)
+                            / (tf.reduce_max(affinity_mat, axis=1, keepdims=True)
+                               - tf.reduce_min(affinity_mat, axis=1, keepdims=True)
                                + tf.keras.backend.epsilon()))
 
         with tf.name_scope('q2_attended'):
