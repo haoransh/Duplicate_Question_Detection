@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     feat_df = pd.DataFrame(
         data=activations,
-        columns=['bi_gru_{}'.format(i) for i in range(0, activations.shape[1])])
+        columns=['{}_{}'.format(arg.model, i) for i in range(0, activations.shape[1])])
     feat_df['id'] = pd.read_csv(
         arg.input_filepath, usecols=['id'])['id']
     feat_df['bi_gru_is_duplicate'] = prob
