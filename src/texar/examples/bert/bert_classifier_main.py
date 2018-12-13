@@ -305,6 +305,7 @@ def main(_):
                 'id': [tf.compat.as_str_any(_id) for _id in _all_ids],
                 'bert_is_duplicate': _all_probs,
             }
+
             for _d in range(feature_dim):
                 _dict['bert_{}'.format(_d)] = _bert_features[_d]
 
