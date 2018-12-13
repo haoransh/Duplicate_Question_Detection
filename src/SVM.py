@@ -2,8 +2,8 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 import sys
 from sklearn.metrics import log_loss, accuracy_score
-from sklearn.ensemble import RandomForestClassifier
-RANDOM_STATE = 0
+from sklearn.svm import SVC
+
 TEST_SIZE = 0.1
 VAL_SIZE = 0.1
 
@@ -19,7 +19,6 @@ USE_BERT_FEATURES = True
 dev_mt_path = '../data/dev_matchtensor_features.csv'
 test_mt_path = '../data/test_matchtensor_features.csv'
 USE_MT_FEATURES = True
-MODEL = 'random_forest'
 #MODEl = 'lasso'
 #MODEL = 'svm'
 
@@ -60,10 +59,8 @@ def main():
     print('begin building the model...')
     print('train size: {} val size:{} test size:{}'.format(
         len(X_train), len(X_val), len(X_test)))
-    model = RandomForestClassifier(n_estimators=500, criterion='entropy',
-                                   max_depth=10, min_samples_leaf=1,
-                                   max_features=0.4, n_jobs=3)
 
+    model= SVC(verbose=True)
     print('begin training...')
     model.fit(X_train, y_train)
 
@@ -95,7 +92,7 @@ def main():
         'id': test_ids,
         'is_duplicate': preds_test
     }
-    output_file = "random_forest_test_results.csv"
+    output_file = "svm_test_results.csv"
     pred_df = pd.DataFrame.from_dict(_dict).set_index('id')
     pred_df.to_csv(output_file, index_label='id')
 
