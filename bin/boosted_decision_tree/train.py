@@ -36,9 +36,8 @@ if __name__ == '__main__':
         train_test_split(dev_X_df, dev_y_df, test_size=0.1, random_state=10701)
 
     # sample from training set to measure training loss
-    train_df_sample = train_X_df.merge(train_y_df,
-                                       left_index=True,
-                                       right_index=True).sample(frac=0.1)
+    train_df_sample = train_X_df.merge(
+        train_y_df, left_index=True, right_index=True).sample(frac=0.1)
     train_X_df_sample = train_df_sample.drop('is_duplicate', axis=1)
     train_y_df_sample = train_df_sample[['is_duplicate']]
 
